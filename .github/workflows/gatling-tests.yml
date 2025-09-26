@@ -1,0 +1,97 @@
+name: Gatling Performance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  gatling-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Run Gatling tests in Docker
+      run: |
+        # Create a Dockerfile for the Gatling tests
+        cat > Dockerfile << 'EOF'
+        FROM openjdk:11-jdk-slim
+        
+        # Install Maven
+        RUN apt-get update && \
+            apt-get install -y maven && \
+            rm -rf /var/lib/apt/lists/*
+        
+        # Set working directory
+        WORKDIR /app
+        
+        # Copy Maven files
+        COPY pom.xml .
+        COPY mvnw .
+        COPY mvnw.cmd .
+        COPY .mvn .mvn
+        
+        # Copy source code
+        COPY src src
+        
+        # Download dependencies
+        RUN mvn dependency:go-offline -B
+        
+        # Run Gatling tests
+        CMD ["mvn", "gatling:test", "-Dgatling.simulationClass=example.BasicSimulation"]
+        EOF
+        
+        # Build and run the Docker container
+        docker build -t gatling-tests .
+        docker run --name gatling-test-run gatling-tests
+        
+    - name: Copy test results from container
+      if: always()
+      run: |
+        # Create results directory
+        mkdir -p test-results
+        
+        # Copy Gatling reports from the container
+        docker cp gatling-test-run:/app/target/gatling ./test-results/ || true
+        
+        # Clean up container
+        docker rm gatling-test-run || true
+        
+    - name: Upload Gatling reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gatling-reports
+        path: test-results/gatling/
+        retention-days: 30
+        
+    - name: Display test summary
+      if: always()
+      run: |
+        echo "## Gatling Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "Test execution completed. Reports have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+        
+        # Try to extract basic stats if available
+        if [ -d "test-results/gatling" ]; then
+          echo "### Test Reports Available" >> $GITHUB_STEP_SUMMARY
+          find test-results/gatling -name "index.html" | while read report; do
+            echo "- [View Report]($report)" >> $GITHUB_STEP_SUMMARY
+          done
+        fi
