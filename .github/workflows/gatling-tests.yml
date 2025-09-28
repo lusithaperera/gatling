@@ -17,30 +17,7 @@ jobs:
         
     - name: Run Gatling tests in Docker
       run: |
-        # Create a Dockerfile for the Gatling tests
-        cat > Dockerfile << 'EOF'
-        FROM eclipse-temurin:11-jdk-alpine
-        
-        # Set working directory
-        WORKDIR /app
-        
-        # Copy Maven files
-        COPY pom.xml .
-        COPY mvnw .
-        COPY mvnw.cmd .
-        COPY .mvn .mvn
-        
-        # Copy source code
-        COPY src src
-        
-        # Download dependencies
-        RUN mvn dependency:go-offline -B
-        
-        # Run Gatling tests
-        CMD ["mvn", "gatling:test", "-Dgatling.simulationClass=example.BasicSimulation"]
-        EOF
-        
-        # Build and run the Docker container
+        # Build and run the Docker container using the Dockerfile
         docker build -t gatling-tests .
         docker run --name gatling-test-run gatling-tests
         
