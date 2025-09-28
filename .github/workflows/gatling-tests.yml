@@ -19,7 +19,7 @@ jobs:
       run: |
         # Create a Dockerfile for the Gatling tests
         cat > Dockerfile << 'EOF'
-        FROM maven:3.9.6-openjdk-11-slim
+        FROM eclipse-temurin:11-jdk-alpine
         
         # Set working directory
         WORKDIR /app
