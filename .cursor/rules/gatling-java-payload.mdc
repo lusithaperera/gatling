@@ -1,0 +1,59 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+## Core Imports
+Always use these imports for Gatling Java tests:
+```java
+import static io.gatling.javaapi.core.CoreDsl.*;
+import static io.gatling.javaapi.http.HttpDsl.*;
+import static perftest.BaseTest.duration;
+```
+
+## HTTP Request Patterns
+- Use `http("transactionName")` for request naming
+- Always include `.header("x-dynaTrace", "NA=" + transactionName + ";")` for tracing
+- Use `.check(status().is(expectedCode))` for status validation
+- Use `.check(jsonPath("$.field").saveAs("variableName"))` for JSON extraction
+- Always parameterize the hardcoded values
+
+## Session Management
+- Set unique request IDs: `.exec(session -> session.set("request-id", String.valueOf(UUID.randomUUID())))`
+- Use session variables with `#{variableName}` syntax in URLs and bodies
+- Chain session operations with `.exec()` blocks
+
+## Chain Builder Pattern
+- Return `ChainBuilder` for reusable request chains
+- Use method naming convention: `public static ChainBuilder METHODNAME()`
+- Group related operations in single ChainBuilder
+- Use ElFileBody for JSON body
+
+
+## Status Checks
+- API endpoints: `.check(status().is(200))` or appropriate code
+- Error scenarios: `.check(status().in(400, 401, 403))`
+- Use `.saveAs()` to extract response data for subsequent requests
+
+## Feeder Patterns
+- CSV feeders: `private static FeederBuilder<String> feederName = csv("data/filename.csv").circular();`
+- Use `.circular()` for infinite looping, `.random()` for random selection, `.queue()` for one-time use
+
+## Custom Feeders
+```java
+public static Iterator<Map<String, Object>> customFeeder =
+    Stream.generate((Supplier<Map<String, Object>>) () -> {
+        String field1 = "prefix_" + Instant.now().toEpochMilli();
+        return Map.of("field1", field1);
+    }).iterator();
+```
+
+## Data Usage
+- Feed data with `.feed(feederName)` before `.exec()`
+- Reference feeder data with `#{fieldName}` in URLs and request bodies
+- Use environment-specific feeders for qa qadata and for perf data
+
+## Package and Directory Naming
+- Do NOT use hyphens `-` in Java package directory names; they are invalid for package resolution.
+- Always use lowercase with underscores `_` when needed, e.g. `api_user`.
+- Ensure the `package` declaration matches the directory structure exactly.

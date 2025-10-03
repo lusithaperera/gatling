@@ -1,0 +1,10 @@
+{
+  "name": "#{petName}",
+  "photoUrls": [
+    "https://example.com/pets/#{petName}.jpg"
+  ],
+  "tags": [
+    { "name": "sample" }
+  ],
+  "status": "#{status}"
+}
